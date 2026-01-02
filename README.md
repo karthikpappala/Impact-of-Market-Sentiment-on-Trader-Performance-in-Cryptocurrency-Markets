@@ -1,4 +1,5 @@
 📊 Impact of Market Sentiment on Trader Performance in Cryptocurrency Markets
+
 📌 Project Overview
 
 This project investigates how Bitcoin market sentiment—captured using the Fear & Greed Index—impacts cryptocurrency trader performance using real historical trading data from Hyperliquid.
