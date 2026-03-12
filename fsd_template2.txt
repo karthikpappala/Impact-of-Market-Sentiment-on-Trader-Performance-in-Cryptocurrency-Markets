@@ -1,0 +1,495 @@
+# Online Assignment Submission and Evaluation System
+
+(Node.js + Express + MySQL + MongoDB)
+
+This web application allows **students to submit assignments** and **faculty to review and grade them**.
+
+* **MySQL** → Stores users and assignments metadata
+* **MongoDB** → Stores student submissions and comments
+
+According to the exam question, the system should include:
+
+* User Authentication
+* Assignment Creation (Faculty)
+* Assignment Submission (Students)
+* Viewing Submissions
+
+
+
+---
+
+# 1. Install Required Packages
+
+Run the following commands in the project folder.
+
+npm init -y
+
+npm install express mongoose mysql2 body-parser cors
+
+---
+
+# 2. Project Folder Structure
+
+assignment-system
+│
+├ app.js
+├ package.json
+│
+├ public
+│   └ index.html
+│
+└ models
+└ Submission.js
+
+---
+
+# 3. MongoDB Model (Assignment Submissions)
+
+File: models/Submission.js
+
+const mongoose = require("mongoose")
+
+const SubmissionSchema = new mongoose.Schema({
+
+student_name:String,
+
+assignment_title:String,
+
+answer:String,
+
+submission_date:String,
+
+status:String
+
+})
+
+module.exports = mongoose.model("Submission",SubmissionSchema)
+
+MongoDB stores student submissions like:
+
+{
+
+student_name: "Ravi",
+
+assignment_title: "Web Development",
+
+answer: "Node.js is used for backend",
+
+submission_date: "2026-03-09",
+
+status: "Submitted"
+
+}
+
+
+
+---
+
+# 4. MySQL Database Design
+
+Run the following SQL commands.
+
+CREATE DATABASE assignmentDB;
+
+USE assignmentDB;
+
+CREATE TABLE users(
+
+id INT AUTO_INCREMENT PRIMARY KEY,
+
+username VARCHAR(50),
+
+password VARCHAR(50),
+
+role VARCHAR(20)
+
+);
+
+CREATE TABLE assignments(
+
+id INT AUTO_INCREMENT PRIMARY KEY,
+
+title VARCHAR(100),
+
+course VARCHAR(100),
+
+due_date DATE,
+
+description TEXT
+
+);
+
+Example Users
+
+INSERT INTO users(username,password,role)
+
+VALUES
+
+("student1","123","student"),
+
+("faculty1","123","faculty");
+
+---
+
+# 5. Main Backend Server
+
+File: app.js
+
+const express = require("express")
+
+const mongoose = require("mongoose")
+
+const mysql = require("mysql2")
+
+const bodyParser = require("body-parser")
+
+const Submission = require("./models/Submission")
+
+const app = express()
+
+app.use(bodyParser.json())
+
+app.use(express.static("public"))
+
+---
+
+MongoDB Connection
+
+---
+
+mongoose.connect("mongodb://127.0.0.1:27017/assignmentDB")
+
+.then(()=>console.log("MongoDB Connected"))
+
+.catch(err=>console.log(err))
+
+---
+
+MySQL Connection
+
+---
+
+const db = mysql.createConnection({
+
+host:"localhost",
+
+user:"root",
+
+password:"",
+
+database:"assignmentDB"
+
+})
+
+db.connect(err=>{
+
+if(err) throw err
+
+console.log("MySQL Connected")
+
+})
+
+---
+
+Middleware Example
+
+---
+
+function logger(req,res,next){
+
+console.log(req.method,"request received")
+
+next()
+
+}
+
+app.use(logger)
+
+---
+
+API: POST /login
+
+---
+
+app.post("/login",(req,res)=>{
+
+const {username,password} = req.body
+
+const query = "SELECT * FROM users WHERE username=? AND password=?"
+
+db.query(query,[username,password],(err,result)=>{
+
+if(err) throw err
+
+res.json(result)
+
+})
+
+})
+
+---
+
+API: POST /assignment/create
+
+---
+
+app.post("/assignment/create",(req,res)=>{
+
+const {title,course,due_date,description} = req.body
+
+const query = "INSERT INTO assignments(title,course,due_date,description) VALUES (?,?,?,?)"
+
+db.query(query,[title,course,due_date,description],(err,result)=>{
+
+if(err) throw err
+
+res.json({message:"Assignment Created"})
+
+})
+
+})
+
+---
+
+API: GET /assignments
+
+---
+
+app.get("/assignments",(req,res)=>{
+
+db.query("SELECT * FROM assignments",(err,result)=>{
+
+if(err) throw err
+
+res.json(result)
+
+})
+
+})
+
+---
+
+API: POST /submit
+
+---
+
+app.post("/submit", async(req,res)=>{
+
+const submission = new Submission(req.body)
+
+await submission.save()
+
+res.json({message:"Assignment Submitted"})
+
+})
+
+---
+
+API: GET /submissions
+
+---
+
+app.get("/submissions", async(req,res)=>{
+
+const submissions = await Submission.find()
+
+res.json(submissions)
+
+})
+
+---
+
+Start Server
+
+---
+
+app.listen(3000,()=>{
+
+console.log("Server running on port 3000")
+
+})
+
+---
+
+# 6. Simple Frontend Page
+
+File: public/index.html
+
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<title>Assignment Submission System</title>
+
+</head>
+
+<body>
+
+<h2>Assignment Portal</h2>
+
+<h3>Login</h3>
+
+<input id="username" placeholder="Username">
+
+<input id="password" placeholder="Password">
+
+<button onclick="login()">Login</button>
+
+<hr>
+
+<h3>Create Assignment</h3>
+
+<input id="title" placeholder="Title">
+
+<input id="course" placeholder="Course">
+
+<input id="due" placeholder="Due Date">
+
+<textarea id="desc" placeholder="Description"></textarea>
+
+<button onclick="createAssignment()">Create</button>
+
+<hr>
+
+<h3>Submit Assignment</h3>
+
+<input id="student" placeholder="Student Name">
+
+<input id="assignment" placeholder="Assignment Title">
+
+<textarea id="answer" placeholder="Answer"></textarea>
+
+<button onclick="submitAssignment()">Submit</button>
+
+<pre id="output"></pre>
+
+<script>
+
+function login(){
+
+ fetch("/login",{
+
+  method:"POST",
+
+  headers:{"Content-Type":"application/json"},
+
+  body:JSON.stringify({
+
+   username:document.getElementById("username").value,
+
+   password:document.getElementById("password").value
+
+  })
+
+ })
+
+ .then(res=>res.json())
+
+ .then(data=>{
+
+  document.getElementById("output").textContent=JSON.stringify(data,null,2)
+
+ })
+
+}
+
+function createAssignment(){
+
+ fetch("/assignment/create",{
+
+  method:"POST",
+
+  headers:{"Content-Type":"application/json"},
+
+  body:JSON.stringify({
+
+   title:document.getElementById("title").value,
+
+   course:document.getElementById("course").value,
+
+   due_date:document.getElementById("due").value,
+
+   description:document.getElementById("desc").value
+
+  })
+
+ })
+
+}
+
+function submitAssignment(){
+
+ fetch("/submit",{
+
+  method:"POST",
+
+  headers:{"Content-Type":"application/json"},
+
+  body:JSON.stringify({
+
+   student_name:document.getElementById("student").value,
+
+   assignment_title:document.getElementById("assignment").value,
+
+   answer:document.getElementById("answer").value,
+
+   submission_date:new Date().toISOString(),
+
+   status:"Submitted"
+
+  })
+
+ })
+
+}
+
+</script>
+
+</body>
+
+</html>
+
+---
+
+# 7. System Workflow
+
+Student / Faculty Browser
+↓
+Frontend (HTML + JavaScript)
+↓
+Express Backend APIs
+↓
+Middleware (logging, validation)
+↓
+MySQL → users, assignments
+MongoDB → submissions
+
+---
+
+# 8. Features Implemented
+
+Login system (MySQL)
+Faculty assignment creation
+Student assignment submission
+View assignments
+View submissions
+
+---
+
+# 9. How to Run
+
+Start MongoDB
+
+Start MySQL
+
+Run server
+
+node app.js
+
+Open browser:
+
+http://localhost:3000
+
+---

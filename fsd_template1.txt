@@ -1,0 +1,343 @@
+# Student Academic Portal (Node.js + Express + MongoDB + MySQL)
+
+This is a **minimal academic portal template** where a student can view:
+
+* Profile information
+* Courses enrolled
+* Grades
+
+Technologies used:
+
+* HTML + JavaScript (Frontend)
+* Node.js + Express (Backend)
+* MongoDB (Student profile storage)
+* MySQL (Courses and grades storage)
+
+---
+
+# 1. Install Required Packages
+
+Run the following commands in the project folder:
+
+npm init -y
+
+npm install express mongoose mysql2 body-parser cors
+
+---
+
+# 2. Project Folder Structure
+
+student-portal
+│
+├ app.js
+├ package.json
+│
+├ models
+│   └ Student.js
+│
+└ public
+└ index.html
+
+---
+
+# 3. MongoDB Student Model
+
+File: models/Student.js
+
+const mongoose = require("mongoose")
+
+const StudentSchema = new mongoose.Schema({
+studentId:String,
+name:String,
+email:String,
+department:String,
+year:Number
+})
+
+module.exports = mongoose.model("Student",StudentSchema)
+
+MongoDB stores:
+
+* student profile
+* academic information
+
+---
+
+# 4. Main Server (Express + MongoDB + MySQL)
+
+File: app.js
+
+const express = require("express")
+const mongoose = require("mongoose")
+const mysql = require("mysql2")
+const bodyParser = require("body-parser")
+
+const Student = require("./models/Student")
+
+const app = express()
+
+app.use(bodyParser.json())
+app.use(express.static("public"))
+
+---
+
+## MongoDB Connection
+
+mongoose.connect("mongodb://127.0.0.1:27017/collegeDB")
+.then(()=>console.log("MongoDB Connected"))
+.catch(err=>console.log(err))
+
+---
+
+## MySQL Connection
+
+const db = mysql.createConnection({
+host:"localhost",
+user:"root",
+password:"",
+database:"college"
+})
+
+db.connect(err=>{
+if(err) throw err
+console.log("MySQL Connected")
+})
+
+---
+
+## Middleware Example
+
+function logger(req,res,next){
+console.log(req.method,"request received")
+next()
+}
+
+app.use(logger)
+
+---
+
+## Routes
+
+Add Student Profile (MongoDB)
+
+app.post("/addStudent", async(req,res)=>{
+
+const student = new Student(req.body)
+
+await student.save()
+
+res.json({message:"Student Added"})
+
+})
+
+Get Student Profile
+
+app.get("/student/:id", async(req,res)=>{
+
+const student = await Student.findOne({studentId:req.params.id})
+
+res.json(student)
+
+})
+
+Get Student Courses (MySQL)
+
+app.get("/courses/:id",(req,res)=>{
+
+const query = "SELECT * FROM courses WHERE student_id = ?"
+
+db.query(query,[req.params.id],(err,result)=>{
+
+if(err) throw err
+
+res.json(result)
+
+})
+
+})
+
+Get Student Grades (MySQL)
+
+app.get("/grades/:id",(req,res)=>{
+
+const query = "SELECT * FROM grades WHERE student_id = ?"
+
+db.query(query,[req.params.id],(err,result)=>{
+
+if(err) throw err
+
+res.json(result)
+
+})
+
+})
+
+---
+
+## Start Server
+
+app.listen(3000,()=>{
+console.log("Server running on port 3000")
+})
+
+---
+
+# 5. MySQL Database Setup
+
+Run the following SQL commands:
+
+CREATE DATABASE college;
+
+USE college;
+
+CREATE TABLE courses(
+id INT AUTO_INCREMENT PRIMARY KEY,
+student_id VARCHAR(20),
+course_name VARCHAR(100)
+);
+
+CREATE TABLE grades(
+id INT AUTO_INCREMENT PRIMARY KEY,
+student_id VARCHAR(20),
+course_name VARCHAR(100),
+grade VARCHAR(5)
+);
+
+Example Data:
+
+INSERT INTO courses(student_id,course_name)
+VALUES
+("101","Database Systems"),
+("101","Machine Learning"),
+("101","Operating Systems");
+
+INSERT INTO grades(student_id,course_name,grade)
+VALUES
+("101","Database Systems","A"),
+("101","Machine Learning","A+"),
+("101","Operating Systems","B+");
+
+---
+
+# 6. Frontend Page
+
+File: public/index.html
+
+<!DOCTYPE html>
+
+<html>
+
+<head>
+<title>Student Academic Portal</title>
+</head>
+
+<body>
+
+<h2>Student Academic Portal</h2>
+
+<input id="sid" placeholder="Enter Student ID">
+
+<button onclick="getProfile()">Profile</button> <button onclick="getCourses()">Courses</button> <button onclick="getGrades()">Grades</button>
+
+<pre id="output"></pre>
+
+<script>
+
+function getProfile(){
+
+ const id=document.getElementById("sid").value
+
+ fetch("/student/"+id)
+ .then(res=>res.json())
+ .then(data=>{
+  document.getElementById("output").textContent=
+  JSON.stringify(data,null,2)
+ })
+
+}
+
+function getCourses(){
+
+ const id=document.getElementById("sid").value
+
+ fetch("/courses/"+id)
+ .then(res=>res.json())
+ .then(data=>{
+  document.getElementById("output").textContent=
+  JSON.stringify(data,null,2)
+ })
+
+}
+
+function getGrades(){
+
+ const id=document.getElementById("sid").value
+
+ fetch("/grades/"+id)
+ .then(res=>res.json())
+ .then(data=>{
+  document.getElementById("output").textContent=
+  JSON.stringify(data,null,2)
+ })
+
+}
+
+</script>
+
+</body>
+</html>
+
+---
+
+# 7. Architecture Flow
+
+Browser (HTML + JS)
+↓
+Express Server
+↓
+Middleware
+↓
+Routes
+↓
+MongoDB → Student Profile
+MySQL → Courses & Grades
+
+---
+
+# 8. Features Demonstrated
+
+This example covers the complete syllabus:
+
+HTML frontend
+JavaScript fetch API
+Node.js server
+Express routing
+Middleware
+MongoDB database
+MySQL database
+
+---
+
+# 9. How to Run
+
+Start MongoDB
+
+Start MySQL
+
+Run server
+
+node app.js
+
+Open browser:
+
+http://localhost:3000
+
+Enter student ID (example: 101)
+
+You can now view:
+
+Profile
+Courses
+Grades
+
+---
